@@ -7,7 +7,10 @@
     <style type="text/css">
       html { height: 100% }
       body { height: 100%; margin: 0; padding: 0 }
-      #map_canvas { height: 200px; margin-top: 5px; margin-bottom: 5px; margin-left: 10px; }
+      #map_canvas { max-width: 100%;
+height: auto;
+width: auto; /*IE8 bug fix*/
+vertical-align: middle; }
     </style>
     <!-- INCLUDE CORDOVA -->
     <script type="text/javascript" src="cordova-2.5.0.js"></script>
@@ -192,7 +195,7 @@
             }
             
             for(var i = 0; i < len; i++) {
-                $('.imggrid').append("<li><img src=\"" + results.rows.item(i).url + "\" onclick=\"showImage(this.src)\" \/></li>");
+                $('.imggrid').append("<img src=\"" + results.rows.item(i).url + "\" onclick=\"showImage(this.src)\" \/>");
             }
             
             console.log(document.getElementById('my_spots').innerHTML);
@@ -231,8 +234,7 @@
             <a class="back" href="#">Home</a>
         </div>
         <div class="imggrid_empty"></div>
-        <div class="imggrid_display">
-            <ul class="imggrid"></ul>
+        <div class="imggrid_display imggrid">
         </div>
     </div>
       <div id="image_view">
@@ -255,7 +257,7 @@
             
             var mapOptions = {
                     center: new google.maps.LatLng(0, 0),
-                    zoom: 0,
+                    zoom: 1,
                     mapTypeId: google.maps.MapTypeId.ROADMAP
             };
             var map = new google.maps.Map(document.getElementById("map_canvas"),
