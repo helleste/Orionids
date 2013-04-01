@@ -1,0 +1,50 @@
+.imggrid_display {
+	margin-bottom: 10px;
+}
+
+.imggrid_display img {
+	width: 100px;
+	height: 100px;
+	margin: 5px;
+}
+
+.imggrid img:nth-child(even) {
+	float: right;
+	margin-right: 30px;
+}
+
+.imggrid img:nth-child(odd) {
+	float: left;
+	margin-left: 30px;
+}
+
+#home ul {
+	margin-top: 20px;
+}
+
+#spot_btn {
+	margin-top: 20px;
+}
+
+#quote {
+	margin-top: 60px;
+	text-align: center;
+	color: grey;
+}
+
+#sorry {
+	text-align: center;
+	color: #1D1C1C;
+	padding-top: 20px;
+}
+
+#map_canvas {
+	margin: 0 auto;
+	margin-top: 10px;
+}
+
+#photo_detail {
+	max-width: 100%;
+  height: auto*4;
+  width: auto; /* ie8 */
+}

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height, target-densitydpi=device-dpi" />
+    <style type="text/css">
+      html { height: 100% }
+      body { height: 100%; margin: 0; padding: 0 }
+      #map_canvas { max-width: 100%;
+height: auto;
+width: auto; /*IE8 bug fix*/
+vertical-align: middle; }
+    </style>
+    <!-- INCLUDE CORDOVA -->
+    <script type="text/javascript" src="cordova-2.5.0.js"></script>
+    <!-- INCLUDE REMOTE DEBUGGING -->
+    <script src="http://debug.phonegap.com/target/target-script-min.js#photogap"></script>"
+    <!-- INCLUDE jQTouch -->
+    <link rel="stylesheet" href="./js/jqtouch-1.0-b4-rc/themes/css/jqtouch.css" id="jqtcss" />
+    <link rel="stylesheet" href="./css/index.css" />
+    <script type="text/javascript" src="./js/jqtouch-1.0-b4-rc/src/lib/zepto.min.js" charset="utf-8"></script>
+    <script type="text/javascript" src="./js/jqtouch-1.0-b4-rc/src/jqtouch.min.js" charset="utf-8"></script>
+    <!-- INCLUDE GOOGLE MAP -->
+    <script type="text/javascript"
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyByqhQ9cCaXTKjBi2xEyp_HqQJwDl3YzRo&sensor=true">
+    </script> 
+    <script type="text/javascript">
+    	// Inicializuj jqTouch
+    	$.jQTouch({
+    		icon: 'jqtouch.png',
+    		statusBar: 'black-translucent',
+    		preloadImages: []
+    	});
+    	
+    	// Globální proměnné
+    	var latitudeGV;
+    	var longitudeGV;
+    	var db;
+    	var resultsGV;
+    	
+    	// Wait for Cordova to load
+    	function onBodyLoad() {
+    		document.addEventListener("deviceready", onDeviceReady, false);
+    	}
+    	
+    	// Cordova is ready
+    	function onDeviceReady() {
+    		// Pokud uživatel používá iOS, přepneme téma
+    		if(device.platform == "iOS") {
+    			$('#jqtcss').attr('href', "./js/jqtouch-1.0-b4-rc/themes/css/apple.css")
+    		}
+    		// Vytvoříme objekt pro manipulaci s databází
+    		db = window.openDatabase("photos", "1.0", "Photos 1.0", 1000000);
+    		// Pokud databáze neexistuje vytvoříme ji
+    		db.transaction(createPhotosDB, errorCB, successCB);
+    		// Načteme grid s fotkami
+    		loadGrid();
+    		
+    		pictureSource = navigator.camera.PictureSourceType;
+    		destinationType = navigator.camera.DestinationType;
+    	}
+    	
+    	// Funkce pro vytvoření databáze
+    	function createPhotosDB(dvr) {
+    		//dvr.executeSql("DROP TABLE IF EXISTS PHOTOS");
+    		dvr.executeSql("CREATE TABLE IF NOT EXISTS PHOTOS (id INTEGER PRIMARY KEY, url TEXT NOT NULL UNIQUE, latitude, longitude)");
+    	}
+    	
+    	// Funkce pro vložení dat do db
+    	function insertPhotosDB(dvr, arg_url, arg_latitude, arg_longitude, callback) {
+    		if(arguments.length == 5) {
+    			dvr.executeSql("INSERT INTO PHOTOS (url, latitude, longitude) VALUES (?, ?, ?)", [arg_url, arg_latitude, arg_longitude], callback, errorInsert);
+    		} else if(arguments.length == 3) {
+    			dvr.executeSql("INSERT INTO PHOTOS (url) VALUES (?)", [arg_url], arguments[2], errorInsert);
+    		} else {
+    			console.log("Error when inserting" + " " + arguments.length);
+    			}
+    	}
+    	
+    	// Vložení dat se nezdařilo
+    	function errorInsert(dvr, err) {
+    		console.log("Error when inserting" + " " + arguments.length + " " + err);
+    	}
+    	
+    	// Vytvoření db se nezdařilo
+    	function errorCB(dvr, err) {
+    		console.log("Error processing SQL: " + err);
+    	}
+    	
+    	// Vytvoření db se zdařilo
+    	function successCB() {
+    		console.log("Database created succesfully.");
+    	}
+    	
+    	// Načti data o fotkách z databáze
+    	function getPhotosDB(succfunc) {
+    		db.transaction(function(transaction) {
+    			transaction.executeSql("SELECT * FROM PHOTOS", [], succfunc, queryError);
+    		})
+    	}
+    	
+    	// Načtení dat se zdařilo
+    	function querySuccess(db, results) {
+    		return results;
+    	}
+    	
+    	// Načtení dat se zdařilo DEVELOPER
+    	function querySuccessDev(db, results) {
+    		var len = results.rows.length;
+    		console.log("Pocet vracenych radku: " + len);
+    		
+    		for(var i = 0; i < len; i++) {
+    			console.log("Row " + i + " | ID = " + results.rows.item(i).id +
+    					" | URL: " + results.rows.item(i).url + " | Latitude: " +
+    					results.rows.item(i).latitude + " | Longitude: " +
+    					results.rows.item(i).longitude);
+    		}
+    	}
+    	
+    	// Načtení dat se nezdařilo
+    	function queryError(err) {
+    		console.log("Problem while loading data from db: " + err);
+    	}
+    	
+    	// Načti GPS souřadnice telefonu
+    	function getLocation() {
+    		navigator.geolocation.getCurrentPosition(successGEO, errorGEO, { maximumAge: 3000, timeout: 5000, enableHighAccuracy: true });
+    	}
+    	
+    	// Načtení souřadnic se zdařilo
+    	function successGEO(position) {
+    		console.log("Latitude: " + position.coords.latitude);
+    		console.log("Longitude: " + position.coords.longitude);
+    		latitudeGV = position.coords.latitude;
+    		longitudeGV = position.coords.longitude;
+    	}
+    	
+    	// Načtení souřadnic se nezdařilo
+    	function errorGEO(error) {
+    		console.log("Error while taking geo: " + error.code + " " + error.message);
+    	}
+    	
+    	// Vyfoť fotku a vrať jí jako URI
+    	function takePhoto() {
+    		getLocation();
+    		navigator.camera.getPicture(photoSuccess, photoFail, {quality: 50,
+    			destinationType: Camera.DestinationType.FILE_URI});
+    	}
+    	
+    	// Focení skončilo úspěchem
+    	function photoSuccess(imageURI) {
+    		db.transaction(function(transaction) {
+    			insertPhotosDB(transaction, imageURI, latitudeGV, longitudeGV, loadGrid);
+    		})
+    		
+    	}
+    	
+    	// Vyber fotku z alba a vrať jí jako URI
+    	function choosePhoto(source) {
+    		navigator.camera.getPicture(chooseSuccess, photoFail, {quality: 50, 
+    			desitantionType: destinationType.FILE_URI, sourceType: source});
+    	}
+    	
+    	// Výběr skončil úspěchem
+    	function chooseSuccess(imageURI) {
+    		
+    		db.transaction(function(transaction) {
+    			insertPhotosDB(transaction, imageURI, loadGrid);
+    		});
+    		
+    	}
+    	
+    	// Fotku se nepodařilo vyfotit/vybrat
+    	function photoFail(message) {
+    		alert("Failed: " + message);
+    	}
+    	
+    	// Vytvoř grid s fotkami na stránce My Spots
+    	function loadGrid() {
+    		$('.imggrid').html("");
+    		$('.imggrid_empty').html("");
+    		getPhotosDB(loadGridSucc);
+    	}
+    	
+    	// Vytvoř grid s fotkami na stránce My Spots
+    	function loadGridSucc(db, results) {
+    		
+    		var len = results.rows.length;
+    		console.log(len);
+    		
+    		if(len == 0) {
+    			$('.imggrid_empty').html("<p id=\"sorry\">Sorry, you have no spots so far.</p>");
+    			$('.imggrid_empty').append("<div id=\"spot_btn\"><a href=\"#\" class=\"redButton\" onclick=\"takePhoto()\">Spot Now!</a></div>");
+    		}
+    		
+    		for(var i = 0; i < len; i++) {
+    			$('.imggrid').append("<img src=\"" + results.rows.item(i).url + "\" onclick=\"showImage(this.src)\" \/>");
+    		}
+    		
+    		console.log(document.getElementById('my_spots').innerHTML);
+    		
+    	}
+    	
+    	// Zobraz detail obrázku
+    	function showImage(url) {
+    		
+    		$('#photo_url').html(url);
+    		$('.photo_view').html("<img id=\"photo_detail\" src=\"" + url + "\" />");
+    		//$('#my_spots').hide();
+    		window.location.href = "#image_view";
+    	
+    	}
+    </script>
+  </head>
+  <body onload="onBodyLoad()">
+  	<div id="home" class="current">
+  		<div class="toolbar">
+  			<h1>Orionids</h1>
+  		</div>
+  		<ul class="rounded">
+  			<li class="arrow"><a href="#my_spots">My Spots</a></li>
+  			<li class="arrow"><a href="#map">View On Map</a></li>
+  			<li onclick="choosePhoto(pictureSource.SAVEDPHOTOALBUM)">Choose From Library</li>
+  		</ul>
+  		<div id="spot_btn">
+  			<a href="#" class="redButton" onclick="takePhoto()">Spot Now!</a>
+  		</div>
+  		<p id="quote">„Make a wish…“</p>
+  	</div>
+  	<div id="my_spots">
+  		<div class="toolbar">
+  			<h1>My Spots</h1>
+  			<a class="back" href="#">Home</a>
+  		</div>
+  		<div class="imggrid_empty"></div>
+  		<div class="imggrid_display imggrid">
+  		</div>
+  	</div>
+	  <div id="image_view">
+	  	<div class="toolbar">
+	  		<h1 id="photo_url"></h1>
+	  		<a class="back" href="#my_spots">Back</a>
+	  	</div>
+	  	<div class="photo_view">
+	  	</div>
+	  </div>
+  	<div id="map">
+  		<div class="toolbar">
+  			<h1>Map View</h1>
+  			<a class="back" href="#">Home</a>
+  		</div>
+  		<div id="map_canvas" style="width:300px; height:400px"></div>
+  		<script>
+  		// Incializuj Google Mapy
+    	function initialize() {
+  			
+    		var mapOptions = {
+    				center: new google.maps.LatLng(0, 0),
+    				zoom: 1,
+    				mapTypeId: google.maps.MapTypeId.ROADMAP
+    		};
+    		var map = new google.maps.Map(document.getElementById("map_canvas"),
+            mapOptions);
+    		
+    		// Pridame znacky
+    		addMarkers(map);
+    		
+    	}
+  		
+  		// Pridame do mapy znacky podle geolokace fotek
+  		function addMarkers(map) {
+  			
+  			db.transaction(function(transaction) {
+    			transaction.executeSql("SELECT * FROM PHOTOS", [], 
+					function succ(db, results) {
+    				for(var i = 0; i < results.rows.length; i++) {
+    					
+    					if (results.rows.item(i).latitude && results.rows.item(i).longitude) {
+    						var latitudeAndLongitude = new google.maps.LatLng(results.rows.item(i).latitude, 
+    								results.rows.item(i).longitude);
+    						var marker = new google.maps.Marker({
+    							position: latitudeAndLongitude,
+    							map: map
+    						});
+    					}
+    					
+    				}
+    			},
+    			queryError
+    			);
+    		})
+    		
+  		}
+  	
+	  	$('#map').bind('pageAnimationEnd', function() {
+	  		initialize();
+	  	});
+  		</script>
+  	</div>
+  </body>
+</html>
