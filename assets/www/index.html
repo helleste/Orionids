@@ -187,7 +187,6 @@ vertical-align: middle; }
         function loadGridSucc(db, results) {
             
             var len = results.rows.length;
-            console.log(len);
             
             if(len == 0) {
                 $('.imggrid_empty').html("<p id=\"sorry\">Sorry, you have no spots so far.</p>");
@@ -197,9 +196,6 @@ vertical-align: middle; }
             for(var i = 0; i < len; i++) {
                 $('.imggrid').append("<img src=\"" + results.rows.item(i).url + "\" onclick=\"showImage(this.src)\" \/>");
             }
-            
-            console.log(document.getElementById('my_spots').innerHTML);
-            
         }
         
         // Zobraz detail obrázku
